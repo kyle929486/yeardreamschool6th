@@ -4,15 +4,14 @@
             "previewLimit": 50,
             "driver": "SQLite",
             "name": "myData",
-            "group": "MyDataGroup",
-            "database": "${workspaceFolder:sql_tutorial}/chinook.db"
+            "group": "myDataGroup",
+            "database": "chinook.db"
         },
         {
             "previewLimit": 50,
             "driver": "SQLite",
-            "database": "${workspaceFolder:sql_tutorial}/book.db",
             "name": "book",
-            "group": "MyDataGroup"
+            "database": "book.db"
         }
     ]
 }

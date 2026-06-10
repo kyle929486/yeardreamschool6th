@@ -1,0 +1,22 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "sample",
+            "database": "${workspaceFolder:yeardreamschool6th}/datasets/sample.db"
+        },
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "chinook",
+            "database": "${workspaceFolder:yeardreamschool6th}/datasets/chinook.db"
+        },
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "book",
+            "database": "${workspaceFolder:yeardreamschool6th}/sql_tutorial/book.db"
+        }
+    ]
+}

@@ -233,10 +233,39 @@ WHERE AlbumID IN (
 -- SQLite 미지원: WHERE Milliseconds > ALL (SELECT Milliseconds ...)
 -- 대체: ALL → MAX (모든 값보다 크다 = 최댓값보다 크다)
 
+-- 메인쿼리 : Name, Milliseconds
+SELECT Name, Milliseconds
+FROM tracks
+WHERE Milliseconds > ()
+;
+
+-- 서브쿼리 : 
+-- Rock 장르와 관련된 것은 Genres 테이블, GenreId
+SELECT MAX(Milliseconds) FROM tracks
+WHERE GenreId = (
+    SELECT GenreId FROM genres WHERE Name = 'Rock'
+);
+
+
+SELECT Name, Milliseconds
+FROM tracks
+WHERE Milliseconds > (
+    SELECT MAX(Milliseconds) FROM tracks
+    WHERE GenreId = (SELECT GenreId FROM genres WHERE Name = 'Rock')
+);
+
+
 -- 문제 12.  (강의자료의 ANY 개념)
 -- 'Jazz' 장르 트랙 중 '하나라도'보다 재생시간이 긴 트랙의 이름을 조회하세요.
 -- SQLite 미지원: WHERE Milliseconds > ANY (...)
 -- 대체: ANY → MIN (하나라도보다 크다 = 최솟값보다 크다)
+
+SELECT Name, Milliseconds
+FROM tracks
+WHERE Milliseconds > (
+    SELECT MIN(Milliseconds) FROM tracks
+    WHERE GenreId = (SELECT GenreId FROM genres WHERE Name = 'Jazz')
+);
 
 
 /* ============  03. 위치에 따른 분류 — 스칼라 서브쿼리 (SELECT 절)  ===== */
@@ -245,15 +274,51 @@ WHERE AlbumID IN (
 -- 각 앨범의 제목과, 그 앨범에 속한 트랙 수를 스칼라 서브쿼리로 함께
 -- 조회하세요. (상관 서브쿼리: 바깥의 a.AlbumId 참조)
 
+-- 메인쿼리 : 앨범의 제목
+-- 서브쿼리 : 앨범에 속한 트랙 수
+SELECT
+    a.Title,
+    (SELECT COUNT(*) FROM tracks t WHERE t.AlbumID = a.AlbumID) AS track_cnt 
+FROM albums a;
+
+
 -- 문제 14.
 -- 각 고객의 이름과, 그 고객의 총 결제 금액(SUM(Total))을 스칼라 서브쿼리로
 -- 조회하세요.
+-- 테이블명 : customers, invoices
+
+-- 메인쿼리 : 고객의 이름을 구하는 것
+-- 서브쿼리 : 총 결제금액 구하기 (고객 ID가 매칭)
+
+SELECT
+    c.FirstName, c.LastName,(
+    SELECT SUM(i.Total) 
+    FROM invoices i 
+    WHERE c.CustomerId = i.CustomerId) 
+    AS total_spent
+FROM customers c;
+
 
 -- 문제 15.
 -- 각 트랙의 이름과, 그 트랙이 속한 앨범 제목을 스칼라 서브쿼리로 조회하세요.
 -- (강의자료 포인트: 스칼라 서브쿼리는 JOIN과 같은 결과)
+-- 테이블명 : tracks, albums
+
+-- 메인쿼리 : 트랙의 이름
+-- 서브쿼리 : 트랙이 속한 앨범 제목
+SELECT
+    t.Name,(
+    SELECT al.Title 
+    FROM albums al 
+    WHERE al.AlbumID = t.AlbumID) 
+    AS album_title
+FROM tracks t;
+
 
 -- 문제 15-1.  (참고) 위 문제 15를 JOIN으로 바꾼 동일 결과
+SELECT t.Name, al.Title AS album_title
+FROM tracks t
+LEFT JOIN albums al ON al.AlbumId = t.AlbumId;
 
 
 /* -------------  [보강] FROM 절 서브쿼리 (파생 테이블, 별칭 필수)  ------- */
@@ -265,6 +330,23 @@ WHERE AlbumID IN (
 -- 문제 17.
 -- 국가별 매출 합계를 구한 파생 테이블에서, 매출이 높은 상위 5개 국가를
 -- 조회하세요.
+-- SELECT * FROM (서브쿼리) GROUP BY / ORDER BY
+
+-- 메인쿼리 : 매출이 높은 국가 출력
+-- invoices
+
+-- 이렇게 하면 국가 이름과 매출 합계까지 나옴
+SELECT BillingCountry, SUM(Total) 
+FROM invoices 
+GROUP BY BillingCountry 
+ORDER BY 2 DESC LIMIT 5;
+
+SELECT BillingCountry FROM(
+    SELECT BillingCountry, SUM(Total) 
+    FROM invoices 
+    GROUP BY BillingCountry 
+    ORDER BY 2 DESC LIMIT 5
+);
 
 
 /* ----------------  [보강] EXISTS / 상관 서브쿼리  -------------------- */
