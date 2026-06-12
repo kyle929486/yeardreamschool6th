@@ -173,8 +173,6 @@ ORDER BY
 -- 분할하고 합치기
 
 
-
-
 SELECT
     c. customerNumber
     , c.customerName
@@ -203,8 +201,6 @@ WHERE c.country = 'France'
     AND strftime('%Y', o.orderDate) = '2004'
 GROUP BY c.customerNumber
 ;
-
-
 
 
 SELECT customerNumber,
