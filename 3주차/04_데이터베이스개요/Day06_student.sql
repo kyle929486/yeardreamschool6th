@@ -86,55 +86,235 @@ DROP TABLE IF EXISTS student;
 DROP TABLE IF EXISTS professor;
 DROP TABLE IF EXISTS department;
 
+-- ============================================================
+-- 커밋 : 수정, 삭제, 갱신 등 작업이 완료되면 DB에 최종 반영
+-- COMMIT;
 
 -- ============================================================
 -- 예제 01: NOT NULL 제약 시연 - 필수 입력 값
+INSERT INTO department (dept_id, dept_name, location)
+VALUES
+    ('CSE', '컴퓨터공학과', '공학관 3층'),  -- 정상
+    ('MATH', '수학과', '미정')  -- location 입력을 안 하더라도 자동으로 추가
+;
+
+SELECT * FROM department;
 
 -- ============================================================
 -- 예제 02: NOT NULL 위반 시 에러 발생 확인
+INSERT INTO department (dept_id, location)
+VALUES ('ART', '예술관 1층')
+;
+-- 에러 발생 - NOT NULL 위반
+-- SQLITE_CONSTRAINT: NOT NULL constraint failed: department.dept_name
+
+INSERT INTO department (dept_id, dept_name, location)
+VALUES ('ART', '예술학과', '예술관 1층')
+;
+SELECT * FROM department;
 
 -- ============================================================
 -- 예제 03: UNIQUE 제약 시연 - 중복 이메일 금지
+INSERT INTO professor (prof_id, name, email, dept_id, hire_year)
+VALUES
+    ('P001', '김민준', 'minjun@school.ac.kr',  'CSE',  2005),
+    ('P002', '이서연', 'seoyeon@school.ac.kr', 'ENG',  2010),
+    ('P003', '박도현', 'dohyeon@school.ac.kr', 'MATH', 1998);
+SELECT * FROM professor;
 
 -- ============================================================
 -- 예제 04: UNIQUE 제약 위반 시 에러 발생 확인
+INSERT INTO professor (prof_id, name, email, dept_id, hire_year)
+VALUES ('P004', '최지우', 'minjun@school.ac.kr', 'CSE', 2020)
+;
+-- 에러 발생 - UNIQUE 위반
+-- SQLITE_CONSTRAINT: UNIQUE constraint failed: professor.email
+
+INSERT INTO professor (prof_id, name, email, dept_id, hire_year)
+VALUES ('P004', '최지우', 'jiwoo@school.ac.kr', 'CSE', 2020)
+;
+
+SELECT * FROM professor;
 
 -- ============================================================
 -- 예제 05: DEFAULT 값 시연 - 값이 없으면 자동으로 기본값 입력됨
+CREATE TABLE test_course (
+    course_id    VARCHAR(10) PRIMARY KEY,
+    title        VARCHAR(100) NOT NULL,
+    max_students INT          DEFAULT 30
+);
+
+INSERT INTO test_course (course_id, title)
+VALUES ('T001', '테스트 강의A');
+
+INSERT INTO test_course (course_id, title, max_students)
+VALUES ('T002', '테스트 강의A', 15);
+
+SELECT * FROM test_course;
+
+DROP TABLE test_course;
+
+-- 하나씩 입력할 때는 Default 필드(컬럼)는 생략해도 됨
+-- 대량으로 입력할 때는 Default 필드라도 반드시 추가
+---- 생략할 경우 아래 에러 발생
+---- SQLITE_ERROR: all VALUES must have the same number of terms
 
 -- 실제 course 테이블에도 강의 데이터 입력
+INSERT INTO course (course_id, title, credit, prof_id, max_students)
+VALUES
+    ('CS101',   '파이썬 기초',     3, 'P001', 30),
+    ('CS102',   '데이터베이스',    3, 'P001', 25),
+    ('ENG201',  '영미문학의 이해', 2, 'P002', 30),
+    ('MATH301', '선형대수학',      3, 'P003', 20)
+;
+
+SELECT * FROM course;
 
 -- ============================================================
 -- 예제 06: CHECK 제약 - 학점 범위(1~3)
+INSERT INTO course (course_id, title, credit, prof_id)
+VALUES ('CS999', '정상 강의', 5, 'P001')
+;
+-- SQLITE_CONSTRAINT: CHECK constraint failed: credit >= 1 AND credit <= 3
+
+INSERT INTO course (course_id, title, credit, prof_id)
+VALUES ('CS999', '정상 강의', 3, 'P001')
+;
+
+SELECT * FROM course;
 
 -- ============================================================
 -- 예제 07: CHECK 제약 - 교수 임용 연도 1980년 이상만 가능
+INSERT INTO professor (prof_id, name, email, dept_id, hire_year)
+VALUES ('P005', '홍길동', 'hong@school.ac.kr', 'ENG', 1970)
+;
+-- SQLITE_CONSTRAINT: CHECK constraint failed: hire_year >= 1980
+
+INSERT INTO professor (prof_id, name, email, dept_id, hire_year)
+VALUES ('P005', '홍길동', 'hong@school.ac.kr', 'ENG', 1989)
+;
+
+SELECT * FROM professor;
 
 -- ============================================================
 -- 예제 08: 학생 데이터 삽입
+INSERT INTO student (student_id, name, email, birth_year, dept_id, grade, tuition_paid)
+VALUES
+    ('S2021001', '정하은', 'haeun@mail.com',  2002, 'CSE',  2, 'N'),
+    ('S2021002', '윤재원', 'jaewon@mail.com', 2001, 'ENG',  3, 'N'),
+    ('S2022001', '송지민', 'jimin@mail.com',  2003, 'MATH', 1, 'N'),
+    ('S2020001', '한수빈', 'subin@mail.com',  2000, 'CSE',  4, 'N'),
+    ('S2022002', '임태양', NULL,              2003, 'ENG',  1, 'N')
+;
 
 -- ============================================================
 -- 예제 09: CHECK 제약 위반 - 학년(grade)
+SELECT * FROM student;
+
+INSERT INTO student (student_id, name, birth_year, dept_id, grade)
+VALUES ('S9999', '정상학생', 2002, 'CSE', 5)
+;
+-- SQLITE_CONSTRAINT: CHECK constraint failed: grade >= 1 AND grade <= 4
+
+INSERT INTO student (student_id, name, birth_year, dept_id, grade)
+VALUES ('S9999', '정상학생', 2002, 'CSE', 4)
+;
 
 -- ============================================================
 -- 예제 10: PRIMARY KEY 제약 위반 - 중복 student_id
+-- SQLite는 PRIMARY KEY 생성 시, NOT NULL을 포함하자
+-- PRIMARY KEY : UNIQUE, NOT NULL
+INSERT INTO student (student_id, name, birth_year, dept_id, grade)
+VALUES ('S2021001', '복제학생', 2002, 'CSE', 2)
+;
+-- SQLITE_CONSTRAINT: UNIQUE constraint failed: student.student_id
+
 
 -- ============================================================
 -- 예제 11: FOREIGN KEY 제약 위반 - 없는 학과 참조
+SELECT * FROM student;
+
+INSERT INTO student (student_id, name, birth_year, dept_id, grade)
+VALUES ('S9998', '유령학생', 2002, 'GHOST', 1)
+;
+-- SQLITE_CONSTRAINT: FOREIGN KEY constraint failed
+
+INSERT INTO student (student_id, name, birth_year, dept_id, grade)
+VALUES ('S9998', '실제학생', 2002, 'CSE', 1)
+;
 
 -- ============================================================
 -- 예제 12: 복합 PRIMARY KEY (Composite Key)
+INSERT INTO enrollment (student_id, course_id, enroll_date, score)
+VALUES
+    ('S2021001', 'CS101',   '2024-03-02', 95),
+    ('S2021001', 'CS102',   '2024-03-02', 88),
+    ('S2021002', 'ENG201',  '2024-03-02', 76),
+    ('S2022001', 'MATH301', '2024-03-02', 91),
+    ('S2020001', 'CS101',   '2024-03-02', 82),
+    ('S2020001', 'MATH301', '2024-03-02', 67)
+;
+
+SELECT * FROM enrollment;
 
 -- 에러 발생 구문 (동일 학생-강의 쌍 중복 입력)
+INSERT INTO enrollment (student_id, course_id, enroll_date)
+VALUES ('S2021001', 'CS101', '2024-09-01')
+;
+-- SQLITE_CONSTRAINT: UNIQUE constraint failed: enrollment.student_id, enrollment.course_id
+
+INSERT INTO enrollment (student_id, course_id, enroll_date)
+VALUES ('S2021002', 'CS101', '2024-09-01')
+;
 
 -- ============================================================
 -- 예제 13: CONSTRAINT 이름 부여 관리 예시
+CREATE TABLE classroom (
+    room_id   VARCHAR(10),
+    building  VARCHAR(20) NOT NULL,
+    capacity  INT,
+    CONSTRAINT classroom_pk   PRIMARY KEY (room_id),
+    CONSTRAINT capacity_check CHECK (capacity > 0 AND capacity <= 200)
+);
+
+INSERT INTO classroom VALUES
+    ('A101', '공학관', 50),
+    ('B201', '인문관', 40),
+    ('C301', '자연관', 30)
+;
 
 -- ============================================================
 -- 예제 14: building 컬럼에 UNIQUE 제약 추가 (테이블 새로 생성)
+CREATE TABLE classroom_new (
+    room_id   VARCHAR(10),
+    building  VARCHAR(20) NOT NULL UNIQUE,
+    capacity  INT,
+    CONSTRAINT classroom_pk   PRIMARY KEY (room_id),
+    CONSTRAINT capacity_check CHECK (capacity > 0 AND capacity <= 200)
+);
+
+INSERT INTO classroom_new SELECT * FROM classroom;
+
+ALTER TABLE classroom_new RENAME TO classroom;
+-- SQLITE_ERROR: there is already another table or index with this name: classroom
+
+SELECT * FROM classroom;
 
 -- ============================================================
 -- 예제 15: DEFAULT 값 변경 (capacity 기본 50으로, SQLite는 ALTER 불가)
+DROP TABLE classroom_new;
+
+CREATE TABLE classroom_new (
+    room_id   VARCHAR(10),
+    building  VARCHAR(20) NOT NULL UNIQUE,
+    capacity  INT         DEFAULT 50,
+    CONSTRAINT classroom_pk   PRIMARY KEY (room_id),
+    CONSTRAINT capacity_check CHECK (capacity > 0 AND capacity <= 200)
+);
+
+INSERT INTO classroom (room_id, building) VALUES ('D401', '경영관');
+SELECT * FROM classroom;
+
 
 -- ============================================================
 -- 예제 16: 제약 조건 삭제 (DROP CONSTRAINT 불가) - CHECK 제외
