@@ -126,10 +126,15 @@ ORDER BY total_revenue DESC
    -- 테이블명: employees, customers
    ---------------------------------------------------------------- */
 SELECT
-   *
+   e.employeeNumber,
+   e.firstName || ' ' || e.lastName AS rep_name,
+   COUNT(c.customerNumber) AS customer_count,
+   ROUND(AVG(c.creditLimit), 2) AS avg_creditLimit
 FROM employees e
 INNER JOIN customers c
-   ON 
+   ON e.employeeNumber = c.salesRepEmployeeNumber
+GROUP BY e.employeeNumber, rep_name
+ORDER BY customer_count DESC
 ;
 
 /* ----------------------------------------------------------------
@@ -139,6 +144,23 @@ INNER JOIN customers c
    -- 출력: territory, customer_count, order_count, total_revenue
    -- 테이블명: offices, employees, customers, orders, orderdetails
    ---------------------------------------------------------------- */
+SELECT
+   of.territory, 
+   COUNT(DISTINCT c.customerNumber) AS customer_count, 
+   COUNT(DISTINCT o.orderNumber) AS order_count, 
+   ROUND(SUM(od.quantityOrdered * od.priceEach), 2) AS total_revenue
+FROM offices of
+INNER JOIN employees e
+   ON of.officeCode = e.officeCode
+INNER JOIN customers c
+   ON e.employeeNumber = c.salesRepEmployeeNumber
+INNER JOIN orders o
+   ON c.customerNumber = o.customerNumber
+INNER JOIN orderdetails od
+   ON o.orderNumber = od.orderNumber
+GROUP BY of.territory
+ORDER BY total_revenue DESC
+;
 
 
 /* ----------------------------------------------------------------
@@ -170,6 +192,17 @@ INNER JOIN customers c
    -- 출력: customerNumber, customerName
    -- 테이블명: customers, orders
    ---------------------------------------------------------------- */
+SELECT
+   customerNumber, customerName
+FROM customers
+WHERE 
+   customerNumber IN
+   (SELECT customerNumber FROM orders WHERE strftime('%Y', orderDate) = '2003')
+   AND
+   customerNumber IN
+   (SELECT customerNumber FROM orders WHERE strftime('%Y', orderDate) = '2004')
+ORDER BY customerNumber
+;
 
 
 /* ----------------------------------------------------------------
@@ -208,7 +241,39 @@ INNER JOIN customers c
    -- 출력: customerNumber, customerName, total_payment, payment_rank
    -- 테이블명: customers, payments
    ---------------------------------------------------------------- */
+SELECT * FROM customers;
+SELECT * FROM payments;
 
+SELECT
+   c.customerNumber,
+   c.customerName,
+   ROUND(SUM(p.amount), 2) AS total_payment,
+   RANK() OVER (ORDER BY SUM(p.amount) DESC) AS payment_rank
+FROM customers c
+JOIN payments p
+   ON c.customerNumber = p.customerNumber
+GROUP BY c.customerNumber
+;
+
+SELECT
+   customerNumber,
+   customerName,
+   total_payment,
+   payment_rank
+FROM (
+   SELECT
+      c.customerNumber,
+      c.customerName,
+      ROUND(SUM(p.amount), 2) AS total_payment,
+      RANK() OVER (ORDER BY SUM(p.amount) DESC) AS payment_rank
+   FROM customers c
+   JOIN payments p
+      ON c.customerNumber = p.customerNumber
+   GROUP BY c.customerNumber, c.customerName
+   )
+WHERE payment_rank <= 10
+ORDER BY payment_rank
+;
 
 /* ----------------------------------------------------------------
    Q16. [PARTITION BY] 국가 내 creditLimit 순위
@@ -217,7 +282,23 @@ INNER JOIN customers c
    -- 정렬: country, country_rank
    -- 테이블명: customers
    ---------------------------------------------------------------- */
+SELECT
+   country, customerName, creditLimit, 
+   RANK() OVER (PARTITION BY country ORDER BY creditLimit) AS country_rank 
+FROM customers
+;
 
+SELECT
+   country, customerName, creditLimit, country_rank 
+FROM (
+   SELECT
+      country, customerName, creditLimit, 
+      RANK() OVER (PARTITION BY country ORDER BY creditLimit) AS country_rank 
+   FROM customers
+   )
+WHERE country_rank <= 3
+ORDER BY country, country_rank 
+;
 
 /* ----------------------------------------------------------------
    Q17. [LAG] 월별 매출 및 전월 대비 증감
@@ -225,7 +306,31 @@ INNER JOIN customers c
    -- 출력: year_month, monthly_revenue, prev_month_revenue, mom_diff
    -- 테이블명: orders, orderdetails
    ---------------------------------------------------------------- */
+SELECT
+   strftime('%Y-%m', o.orderDate) AS year_month, 
+   ROUND(SUM(od.quantityOrdered * od.priceEach), 2) AS monthly_revenue,
+   LAG(ROUND(SUM(od.quantityOrdered * od.priceEach), 2)) OVER (ORDER BY strftime('%Y-%m', o.orderDate)) AS prev_month_revenue
+FROM orders o
+INNER JOIN orderdetails od
+   ON o.orderNumber = od.orderNumber
+GROUP BY strftime('%Y-%m', o.orderDate)
+;
 
+SELECT
+   year_month, monthly_revenue, prev_month_revenue,
+   ROUND(monthly_revenue - prev_month_revenue, 2) AS mom_diff
+FROM (
+   SELECT
+      strftime('%Y-%m', o.orderDate) AS year_month, 
+      ROUND(SUM(od.quantityOrdered * od.priceEach), 2) AS monthly_revenue,
+      LAG(ROUND(SUM(od.quantityOrdered * od.priceEach), 2)) OVER (ORDER BY strftime('%Y-%m', o.orderDate)) AS prev_month_revenue
+   FROM orders o
+   INNER JOIN orderdetails od
+      ON o.orderNumber = od.orderNumber
+   GROUP BY strftime('%Y-%m', o.orderDate)
+)
+ORDER BY year_month
+;
 
 /* ----------------------------------------------------------------
    Q18. [SUM OVER] productLine별 매출 비중 (Running ratio)
@@ -233,6 +338,32 @@ INNER JOIN customers c
    -- 출력: productLine, line_revenue, revenue_ratio
    -- 테이블명: products, orderdetails
    ---------------------------------------------------------------- */
+SELECT * FROM products;
+SELECT * FROM orderdetails;
+
+SELECT
+   productLine, 
+   SUM(ROUND(od.quantityOrdered * od.priceEach, 2)) OVER (PARTITION BY p.productLine) AS line_revenue
+FROM products p
+INNER JOIN orderdetails od
+   ON p.productCode = od.productCode
+GROUP BY productLine
+;
+
+SELECT
+   productLine, line_revenue,
+   ROUND(line_revenue / SUM(line_revenue) OVER (), 4) AS revenue_ratio
+FROM (
+   SELECT
+      p.productLine, 
+      ROUND(SUM(od.quantityOrdered * od.priceEach), 2) AS line_revenue
+   FROM products p
+   INNER JOIN orderdetails od
+      ON p.productCode = od.productCode
+   GROUP BY p.productLine
+)
+ORDER BY line_revenue DESC
+;
 
 
 /* ----------------------------------------------------------------
